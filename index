@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+
+<html>
+<head>
+<meta charset="UTF-8">
+<title>index</title>
+
+<style>
+
+body{
+background:black;
+color:white;
+font-family:Arial;
+text-align:center;
+}
+
+.wrapper{
+display:flex;
+justify-content:center;
+align-items:flex-start;
+gap:30px;
+margin-top:20px;
+}
+
+canvas{
+border:1px solid white;
+}
+
+.stats{
+margin-top:10px;
+font-size:18px;
+}
+
+.controls{
+margin-top:15px;
+}
+
+button{
+font-size:16px;
+padding:8px 15px;
+margin:5px;
+cursor:pointer;
+}
+
+</style>
+
+</head>
+
+<body>
+
+<h2>Game of Life – eksperyment</h2>
+
+<div class="stats">
+Kroki: <span id="steps">0</span> |
+Kontakty: <span id="events">0</span> |
+Głód: <span id="hunger">0</span>
+</div>
+
+<div class="controls">
+<button onclick="startGame()">START</button>
+<button onclick="stopGame()">STOP</button>
+<button onclick="resetGame()">RESET</button>
+</div>
+
+<div class="wrapper">
+
+<canvas id="game"></canvas> <canvas id="zoom"></canvas>
+
+</div>
+
+<script>
+
+const size = 100
+const cell = 6
+
+const zoomSize = 5
+const zoomCell = cell*10
+
+const canvas = document.getElementById("game")
+canvas.width = size*cell
+canvas.height = size*cell
+const ctx = canvas.getContext("2d")
+
+const zoomCanvas = document.getElementById("zoom")
+zoomCanvas.width = zoomSize*zoomCell
+zoomCanvas.height = zoomSize*zoomCell
+const zoomCtx = zoomCanvas.getContext("2d")
+
+let grid = []
+let steps = 0
+let events = 0
+let hunger = 0
+
+let redX = Math.floor(size/2)
+let redY = Math.floor(size/2)
+
+let timer = null
+
+function createGrid(){
+
+grid=[]
+
+for(let y=0;y<size;y++){
+grid[y]=[]
+for(let x=0;x<size;x++){
+grid[y][x]=0
+}
+}
+
+let count=0
+
+while(count<5000){
+
+let x=Math.floor(Math.random()*size)
+let y=Math.floor(Math.random()*size)
+
+if(grid[y][x]==0 && !(x==redX && y==redY)){
+grid[y][x]=1
+count++
+}
+
+}
+
+}
+
+function neighbors(x,y){
+
+let n=0
+
+for(let dy=-1;dy<=1;dy++){
+for(let dx=-1;dx<=1;dx++){
+
+if(dx==0 && dy==0) continue
+
+let nx=x+dx
+let ny=y+dy
+
+if(nx>=0 && nx<size && ny>=0 && ny<size){
+if(grid[ny][nx]==1) n++
+}
+
+}
+}
+
+return n
+
+}
+
+function step(){
+
+let newGrid=[]
+
+for(let y=0;y<size;y++){
+newGrid[y]=[]
+for(let x=0;x<size;x++){
+
+if(x==redX && y==redY){
+newGrid[y][x]=0
+continue
+}
+
+let n=neighbors(x,y)
+
+if(grid[y][x]==1){
+
+if(n==2 || n==3) newGrid[y][x]=1
+else newGrid[y][x]=0
+
+}else{
+
+if(n==3) newGrid[y][x]=1
+else newGrid[y][x]=0
+
+}
+
+}
+}
+
+grid=newGrid
+
+}
+
+function draw(){
+
+ctx.fillStyle="black"
+ctx.fillRect(0,0,canvas.width,canvas.height)
+
+for(let y=0;y<size;y++){
+for(let x=0;x<size;x++){
+
+if(grid[y][x]==1){
+ctx.fillStyle="lime"
+ctx.fillRect(x*cell,y*cell,cell,cell)
+}
+
+}
+}
+
+ctx.fillStyle="red"
+ctx.fillRect(redX*cell,redY*cell,cell,cell)
+
+}
+
+function drawZoom(){
+
+zoomCtx.fillStyle="black"
+zoomCtx.fillRect(0,0,zoomCanvas.width,zoomCanvas.height)
+
+let half=2
+
+for(let dy=-half;dy<=half;dy++){
+for(let dx=-half;dx<=half;dx++){
+
+let gx=redX+dx
+let gy=redY+dy
+
+let zx=(dx+half)*zoomCell
+let zy=(dy+half)*zoomCell
+
+if(gx>=0 && gx<size && gy>=0 && gy<size){
+
+if(grid[gy][gx]==1){
+zoomCtx.fillStyle="lime"
+zoomCtx.fillRect(zx,zy,zoomCell,zoomCell)
+}
+
+}
+
+}
+
+}
+
+zoomCtx.fillStyle="red"
+zoomCtx.fillRect(2*zoomCell,2*zoomCell,zoomCell,zoomCell)
+
+}
+
+function randomMove(){
+
+let dirs=[
+[0,0],
+[1,0],
+[-1,0],
+[0,1],
+[0,-1]
+]
+
+let d=dirs[Math.floor(Math.random()*dirs.length)]
+
+let nx=redX+d[0]
+let ny=redY+d[1]
+
+if(nx>=0 && nx<size && ny>=0 && ny<size){
+
+if(grid[ny][nx]==0){
+redX=nx
+redY=ny
+}
+
+}
+
+}
+
+function checkContact(){
+
+for(let dy=-1;dy<=1;dy++){
+for(let dx=-1;dx<=1;dx++){
+
+let nx=redX+dx
+let ny=redY+dy
+
+if(nx>=0 && nx<size && ny>=0 && ny<size){
+
+if(grid[ny][nx]==1){
+
+let n=neighbors(nx,ny)
+
+if(n==1){
+events++
+hunger=Math.max(0,hunger-1)
+}
+
+}
+
+}
+
+}
+}
+
+}
+
+function addRandomCell(){
+
+let x=Math.floor(Math.random()*size)
+let y=Math.floor(Math.random()*size)
+
+if(!(x==redX && y==redY)){
+grid[y][x]=1
+}
+
+}
+
+function loop(){
+
+steps++
+
+step()
+
+randomMove()
+
+checkContact()
+
+if(steps%9==0){
+addRandomCell()
+}
+
+if(steps%10==0){
+hunger++
+}
+
+draw()
+drawZoom()
+
+document.getElementById("steps").textContent=steps
+document.getElementById("events").textContent=events
+document.getElementById("hunger").textContent=hunger
+
+}
+
+function startGame(){
+if(timer==null){
+timer=setInterval(loop,100)
+}
+}
+
+function stopGame(){
+clearInterval(timer)
+timer=null
+}
+
+function resetGame(){
+
+stopGame()
+
+steps=0
+events=0
+hunger=0
+
+redX=Math.floor(size/2)
+redY=Math.floor(size/2)
+
+createGrid()
+
+draw()
+drawZoom()
+
+document.getElementById("steps").textContent=0
+document.getElementById("events").textContent=0
+document.getElementById("hunger").textContent=0
+
+}
+
+createGrid()
+draw()
+drawZoom()
+
+</script>
+
+</body>
+</html>
